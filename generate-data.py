@@ -29,8 +29,7 @@ MAX_PARAGRAPH_TOKENS = 3800 # This leaves 200 tokens left over for your question
 
 # This is the one OpenAI recommends for almost all use cases as of 2022-12-05
 EMBEDDINGS_MODEL = "text-embedding-ada-002"
-
-openai.api_key = "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"
+openai.api_key_path = "./openai_api_key"
 
 def extract_p_tags():
     url = urllib.request.urlopen('https://www.gnu.org/software/emacs/manual/html_mono/emacs.html')
