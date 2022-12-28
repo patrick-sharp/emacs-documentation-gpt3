@@ -13,8 +13,8 @@ import math
 import time
 import pickle
 
-MAX_PROMPT_TOKENS = 4000 # This is the maximum length of a GPT-3 prompt
-MAX_PARAGRAPH_TOKENS = 3800 # This leaves 200 tokens left over for your question
+from common import *
+
 # When a user asks a question, we search for some text that might be relevant,
 # Then ask GPT-3 to answer a question that looks like:
 #
@@ -26,10 +26,6 @@ MAX_PARAGRAPH_TOKENS = 3800 # This leaves 200 tokens left over for your question
 # 
 #  Q: <user question>
 #  A:
-
-# This is the one OpenAI recommends for almost all use cases as of 2022-12-05
-EMBEDDINGS_MODEL = "text-embedding-ada-002"
-openai.api_key_path = "./openai_api_key"
 
 def extract_p_tags():
     url = urllib.request.urlopen('https://www.gnu.org/software/emacs/manual/html_mono/emacs.html')
@@ -65,8 +61,9 @@ def split_text_into_paragraphs():
     tokenizer = GPT2TokenizerFast.from_pretrained("gpt2")
     writer = ParagraphWriter()
     with (open("emacs-documentation.txt", "r") as in_txt,
-          open("emacs-documentation.csv", "w") as out_csv):
+          open(CORPUS_PATH, "w") as out_csv):
         writer.csv_writer = csv.writer(out_csv, quoting=csv.QUOTE_ALL)
+        writer.csv_writer.writerow(["Rows written", "Length in tokens", "Paragraph text"])
         lines_in_current_paragraph = []
         lines = in_txt.readlines()
         for line in lines:
@@ -133,7 +130,7 @@ def split_text_into_paragraphs():
 def calculate_embeddings():
     # Try to load embeddings from a cached file
     try:
-        with open("./embeddings.pickle", "rb") as input_file:
+        with open(EMBEDDINGS_PATH, "rb") as input_file:
             paragraph_embeddings = pickle.load(input_file)
     except TypeError:
         # If there are no embeddings saved, just make an empty list
@@ -148,7 +145,7 @@ def calculate_embeddings():
         )
         return result["data"][0]["embedding"]
 
-    with open("emacs-documentation.csv", "r") as input_file:
+    with open(CORPUS_PATH, "r") as input_file:
         reader = csv.reader(input_file, quoting=csv.QUOTE_ALL)
         for i, row in enumerate(reader):
             if i < cached_paragraph_embeddings_len:
@@ -160,9 +157,9 @@ def calculate_embeddings():
                 print("RateLimitError")
                 break
 
-    print("started with", cached_paragraph_embeddings_len, "embeddings")
+    print("started with", cached_paragraph_embeddings_len, "embeddings.")
     print("exiting with", len(paragraph_embeddings), "embeddings.")
-    with open("./embeddings.pickle", "wb") as file:
+    with open(EMBEDDINGS_PATH, "wb") as file:
         pickle.dump(paragraph_embeddings, file)
 
 # extract_p_tags()

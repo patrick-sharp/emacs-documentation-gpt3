@@ -2,3 +2,5 @@
 env
 tmux-client*
 openai_api_key
+__pycache__
+
