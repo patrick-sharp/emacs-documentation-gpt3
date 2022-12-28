@@ -2,6 +2,15 @@
 # and get it into a format ready for use with OpenAI's embeddings
 # and GPT-3
 
+# I already used to generate these files:
+
+# emacs-documentation.txt
+# emacs-documentation.csv
+# embeddings.pickle
+
+# If you have those files (and you should - I included them in the repo),
+# then there is no reason to run this file
+
 from bs4 import BeautifulSoup
 import csv
 import urllib.request
@@ -15,18 +24,8 @@ import pickle
 
 from common import *
 
-# When a user asks a question, we search for some text that might be relevant,
-# Then ask GPT-3 to answer a question that looks like:
-#
-# Answer the question as truthfully as possible using the provided context,
-# and if the answer is not contained within the text below, say "I don't know."
-# 
-# Context:
-# <context>
-# 
-#  Q: <user question>
-#  A:
-
+# Get all the text in <p> tags in the emacs manual's html page.
+# Generates emacs-documentation.txt
 def extract_p_tags():
     url = urllib.request.urlopen('https://www.gnu.org/software/emacs/manual/html_mono/emacs.html')
     content = url.read()
@@ -42,8 +41,8 @@ def extract_p_tags():
 # Write each block of text (paragraph, not to be confused with <p> tag)
 # into a CSV file.
 # A paragraph will contain the text from multiple <p> tags, and be less than MAX_PARAGRAPH_TOKENS
-# tokens after being tokenized by the GPT2 tokenizer
-
+# tokens after being tokenized by the GPT2 tokenizer.
+# Generates emacs-documentation.csv
 def split_text_into_paragraphs():
     class ParagraphWriter():
         def __init__(self):
@@ -79,7 +78,7 @@ def split_text_into_paragraphs():
                     # This is a shit show.
                     # If a paragraph is too long, we have to cut it into multiple.
                     # We don't want to split up sentences.
-                    # Add sentences to the current paragraph, but not more than 3800 tokens total.
+                    # Add sentences to the current paragraph, but not more than MAX_PARAGRAPH_TOKENS total.
                     delimiter = ". "
                     sentences = [e+delimiter for e in current_paragraph.split(delimiter) if e]
                     sentence_lens = []
@@ -118,37 +117,28 @@ def split_text_into_paragraphs():
             #print(type(embedding))
             #self.paragraph_embeddings.append(embedding)
 
-
 # Now that we have the paragraphs, we need to get the embeddings for them.
 # One small problem - OpenAI's free API is quite aggressively rate limited.
 # This can fail due to rate limiting. It will save what it has.
 # When you run it again, it will pick up where it left off.
 # Experimentally, it seems to be able to calculate about 50 each run.
-# CSV has 776 lines at time of writing (may change if manual changes), so 
+# CSV has 776 rows at time of writing (may change if manual changes), so 
 # that should take about 16 runs separated by 30 sec each to get them all.
-# Write the embeddings to embeddings.pickle
+# Generates embeddings.pickle
 def calculate_embeddings():
     # Try to load embeddings from a cached file
     try:
         with open(EMBEDDINGS_PATH, "rb") as input_file:
             paragraph_embeddings = pickle.load(input_file)
-    except TypeError:
+    except (TypeError, FileNotFoundError):
         # If there are no embeddings saved, just make an empty list
         paragraph_embeddings = []
     cached_paragraph_embeddings_len = len(paragraph_embeddings)
 
-    # Get the embeddings for a string
-    def get_embedding(text: str) -> list[float]:
-        result = openai.Embedding.create(
-          model=EMBEDDINGS_MODEL,
-          input=text
-        )
-        return result["data"][0]["embedding"]
-
     with open(CORPUS_PATH, "r") as input_file:
         reader = csv.reader(input_file, quoting=csv.QUOTE_ALL)
         for i, row in enumerate(reader):
-            if i < cached_paragraph_embeddings_len:
+            if i < cached_paragraph_embeddings_len + 1: # +1 to skip csv header
                 continue
             paragraph = row[2]
             try:
@@ -162,6 +152,12 @@ def calculate_embeddings():
     with open(EMBEDDINGS_PATH, "wb") as file:
         pickle.dump(paragraph_embeddings, file)
 
+# Run the first two functions once, then comment them out and just
+# run the last one until you get all the embeddings.
+# This shell command might be helpful
+# while true; do python generate-data.py; sleep 60; done
+
 # extract_p_tags()
 # split_text_into_paragraphs()
 calculate_embeddings()
+

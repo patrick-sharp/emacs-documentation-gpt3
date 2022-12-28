@@ -7,8 +7,18 @@ EMBEDDINGS_MODEL = "text-embedding-ada-002" # This is the one OpenAI recommends 
 COMPLETIONS_MODEL = "text-davinci-003"
 
 
-MAX_PROMPT_TOKENS = 4000 # This is the maximum length of a GPT-3 prompt
-MAX_PARAGRAPH_TOKENS = 3800 # This leaves 200 tokens left over for your question
+COMPLETIONS_API_PARAMS = {
+    # We use temperature of 0.0 because it gives the most predictable, factual answer.
+    "temperature": 0.0,
+    "max_tokens": 300,
+    "model": COMPLETIONS_MODEL,
+}
+
+SEPARATOR = "\n* "
+
+MAX_CONTEXT_TOKENS = 4097 # This is the maximum length of a GPT-3 prompt + completions
+MAX_PROMPT_TOKENS = MAX_CONTEXT_TOKENS - COMPLETIONS_API_PARAMS["max_tokens"]
+MAX_PARAGRAPH_TOKENS = MAX_PROMPT_TOKENS - 400 # Leaves room for the separators and question
 
 CORPUS_PATH = "emacs-documentation.csv"
 EMBEDDINGS_PATH = "embeddings.pickle"
